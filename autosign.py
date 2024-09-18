@@ -1,7 +1,8 @@
 import fitz
+from pathlib import Path
 
 
-class tuzhi(object):
+class Tuzhi(object):
     def __init__(self, h=0, w=0, path=""):
         self._h = h
         self._w = w
@@ -26,18 +27,18 @@ class tuzhi(object):
         self._path = path
 
     def set_category(self):
-        if self._h < self._w:
+        if self._h > self._w:
             self._category = "A4h"
         else:
-            if self._h == 2384 & self._w == 3370:
+            if self._h == 2384 and self._w == 3370:
                 self._category = "A0"
-            if self._h == 1684 & self._w == 2384:
+            if self._h == 1684 and self._w == 2384:
                 self._category = "A1"
-            if self._h == 1191 & self._w == 1684:
+            if self._h == 1191 and self._w == 1684:
                 self._category = "A2"
-            if self._h == 842 & self._w == 1191:
+            if self._h == 842 and self._w == 1191:
                 self._category = "A3"
-            if self._h == 595 & self._w == 842:
+            if self._h == 595 and self._w == 842:
                 self._category = "A4"
 
     def __str__(self):
@@ -53,7 +54,7 @@ def get_pdf_page_size(pdf_path, page_number=1):
         page = pdf_document[page_number - 1]  # 页面索引从0开始，所以要减1
 
         # 获取页面大小
-        page_size = page.rect.height, page.rect.width
+        page_size = round(page.rect.height), round(page.rect.width)
 
         return page_size
 
@@ -125,3 +126,13 @@ def add_image_to_pdf_page(pdf_path, image_path, page_number, output_path):
     # 保存修改后的 PDF 文件
     pdf_document.save(output_path)
     pdf_document.close()
+
+
+if __name__ == "__main__":
+    file1_path = "a2.pdf"
+    file1_h, file1_w = get_pdf_page_size(file1_path)
+    tuzhi1 = Tuzhi(file1_h, file1_w, file1_path)
+
+    print(tuzhi1)
+    print(tuzhi1.path)
+    print(tuzhi1.size)
