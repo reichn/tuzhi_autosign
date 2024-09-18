@@ -1,14 +1,16 @@
 import fitz
 from pathlib import Path
 from PIL import Image
-import cairosvg
+
+# import cairosvg
 
 
 class Tuzhi(object):
-    def __init__(self, h=0, w=0, path=""):
+    def __init__(self, h=0, w=0, path="", name=""):
         self._h = h
         self._w = w
         self._path = path
+        self._name = name
         self._category = ""
         self.set_category()
 
@@ -21,12 +23,20 @@ class Tuzhi(object):
         return self._path
 
     @property
+    def name(self):
+        return self.name
+
+    @property
     def category(self):
         return self._category
 
     @path.setter
     def path(self, path):
         self._path = path
+
+    @name.setter
+    def name(self, name):
+        self._name = name
 
     def set_category(self):
         if self._h > self._w:
