@@ -1,5 +1,6 @@
 import fitz
 from pathlib import Path
+from PIL import Image
 
 
 class Tuzhi(object):
@@ -99,26 +100,42 @@ def extract_text_with_coordinates(pdf_path, word):
     return out
 
 
-def get_word_positions(pdf_path):
+def get_word_positions(pdf_path, word):
 
-    text_data = extract_text_with_coordinates(pdf_path, "设计")
+    text_data = extract_text_with_coordinates(pdf_path, word)
 
     for item in text_data:
         print(f"Page {item['page']}: Text: '{item['text']}', BBox: {item['bbox']}")
 
+    return text_data[0]["bbox"]
 
-def add_image_to_pdf_page(pdf_path, image_path, page_number, output_path):
+
+def resize_image(input_path, output_path, size):
+    with Image.open(input_path) as img:
+        img_resized = img.resize(size)
+        img_resized.save(output_path, quality=95)
+
+
+def add_image_to_pdf_page(
+    pdf_path, image_path, page_number, sign_position, output_path
+):
     # 打开现有的 PDF 文件
     pdf_document = fitz.open(pdf_path)
 
     # 打开指定的页面（page_number 从 0 开始）
     page = pdf_document.load_page(page_number)
 
-    # 定义图片的位置和尺寸 (x0, y0, x1, y1)
-    x0 = 100  # 图片的左上角 x 坐标
-    y0 = 500  # 图片的左上角 y 坐标
-    x1 = x0 + 400  # 图片的右下角 x 坐标 (宽度为 400)
-    y1 = y0 + 300  # 图片的右下角 y 坐标 (高度为 300)
+    # # 定义图片的位置和尺寸 (x0, y0, x1, y1)
+    # x0 = 100  # 图片的左上角 x 坐标
+    # y0 = 500  # 图片的左上角 y 坐标
+    # x1 = x0 + 400  # 图片的右下角 x 坐标 (宽度为 400)
+    # y1 = y0 + 300  # 图片的右下角 y 坐标 (高度为 300)
+    x0 = sign_position[0] + 30
+    y0 = sign_position[1]
+    # x1 = sign_position[2]
+    # y1 = sign_position[3]
+    x1 = x0 + 25
+    y1 = y0 + 15
 
     # 在页面上添加图片
     page.insert_image(fitz.Rect(x0, y0, x1, y1), filename=image_path)
@@ -137,4 +154,8 @@ if __name__ == "__main__":
     print(tuzhi1.path)
     print(tuzhi1.size)
 
-    add_image_to_pdf_page(tuzhi1.path, r"sign_demo.png", 0, "a2_sign.pdf")
+    tuzhi1_sign_position = get_word_positions(tuzhi1.path, "设计")
+    resize_image("sign_demo.png", "sign_demo_resized.png", (50, 30))
+    add_image_to_pdf_page(
+        tuzhi1.path, r"sign_demo_resized.png", 0, tuzhi1_sign_position, "a2_sign.pdf"
+    )
