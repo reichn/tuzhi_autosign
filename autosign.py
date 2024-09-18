@@ -136,3 +136,5 @@ if __name__ == "__main__":
     print(tuzhi1)
     print(tuzhi1.path)
     print(tuzhi1.size)
+
+    add_image_to_pdf_page(tuzhi1.path, r"sign_demo.png", 0, "a2_sign.pdf")
