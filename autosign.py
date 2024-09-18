@@ -2,13 +2,46 @@ import fitz
 
 
 class tuzhi(object):
-    def __init__(self, h=0, w=0):
+    def __init__(self, h=0, w=0, path=""):
         self._h = h
         self._w = w
+        self._path = path
+        self._category = ""
+        self.set_category()
 
     @property
     def size(self):
         return self._h, self._w
+
+    @property
+    def path(self):
+        return self._path
+
+    @property
+    def category(self):
+        return self._category
+
+    @path.setter
+    def path(self, path):
+        self._path = path
+
+    def set_category(self):
+        if self._h < self._w:
+            self._category = "A4h"
+        else:
+            if self._h == 2384 & self._w == 3370:
+                self._category = "A0"
+            if self._h == 1684 & self._w == 2384:
+                self._category = "A1"
+            if self._h == 1191 & self._w == 1684:
+                self._category = "A2"
+            if self._h == 842 & self._w == 1191:
+                self._category = "A3"
+            if self._h == 595 & self._w == 842:
+                self._category = "A4"
+
+    def __str__(self):
+        return self._category
 
 
 def get_pdf_page_size(pdf_path, page_number=1):
