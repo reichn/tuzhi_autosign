@@ -1,6 +1,7 @@
 import fitz
 from pathlib import Path
 from PIL import Image
+import cairosvg
 
 
 class Tuzhi(object):
@@ -115,6 +116,13 @@ def resize_image(input_path, output_path, size):
         img_resized = img.resize(size)
         img_resized.save(output_path, quality=95)
 
+    # cairosvg.svg2png(
+    #     url=input_path,
+    #     write_to=output_path,
+    #     output_height=size(1),
+    #     output_width=size(2),
+    # )
+
 
 def add_image_to_pdf_page(
     pdf_path, image_path, page_number, sign_position, output_path
@@ -156,6 +164,8 @@ if __name__ == "__main__":
 
     tuzhi1_sign_position = get_word_positions(tuzhi1.path, "设计")
     resize_image("sign_demo.png", "sign_demo_resized.png", (50, 30))
+
+    # resize_image("sign_svg.svg", "sign_demo_resized.png", (50, 30))
     add_image_to_pdf_page(
         tuzhi1.path, r"sign_demo_resized.png", 0, tuzhi1_sign_position, "a2_sign.pdf"
     )
