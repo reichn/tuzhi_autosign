@@ -1,9 +1,14 @@
 import fitz
 
 
-class tuzhi:
-    def __init__(self):
-        self.a0 = 1
+class tuzhi(object):
+    def __init__(self, h=0, w=0):
+        self._h = h
+        self._w = w
+
+    @property
+    def size(self):
+        return self._h, self._w
 
 
 def get_pdf_page_size(pdf_path, page_number=1):
