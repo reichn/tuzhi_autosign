@@ -1,6 +1,7 @@
 import fitz
 from pathlib import Path
 from PIL import Image
+from datetime import datetime
 
 # import cairosvg
 
@@ -134,7 +135,7 @@ def resize_image(input_path, output_path, size):
     # )
 
 
-def add_image_to_pdf_page(
+def add_image_and_text_to_pdf_page(
     pdf_path, image_path, page_number, sign_position, output_path
 ):
     # 打开现有的 PDF 文件
@@ -158,6 +159,13 @@ def add_image_to_pdf_page(
     # 在页面上添加图片
     page.insert_image(fitz.Rect(x0, y0, x1, y1), filename=image_path)
 
+    today = datetime.today().date()
+    today = today.strftime(r"%Y%m%d")
+
+    # font_path = "hyswlongfangsong.ttf"
+
+    page.insert_text((x0 + 30, y0 + 10), today, fontsize=10, fontname="helv")
+
     # 保存修改后的 PDF 文件
     pdf_document.save(output_path)
     pdf_document.close()
@@ -176,6 +184,6 @@ if __name__ == "__main__":
     resize_image("sign_demo.png", "sign_demo_resized.png", (50, 30))
 
     # resize_image("sign_svg.svg", "sign_demo_resized.png", (50, 30))
-    add_image_to_pdf_page(
+    add_image_and_text_to_pdf_page(
         tuzhi1.path, r"sign_demo_resized.png", 0, tuzhi1_sign_position, "a2_sign.pdf"
     )
