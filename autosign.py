@@ -1,9 +1,114 @@
-import fitz
 from pathlib import Path
-from PIL import Image
 from datetime import datetime
+import fitz  # PyMuPDF
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import mm
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib.pagesizes import A4
+from reportlab.graphics import renderPDF
+from reportlab.graphics.shapes import Drawing
+from svglib.svglib import svg2rlg
+import io
+from PIL import Image
 
-# import cairosvg
+
+def get_pdf_page_size(pdf_path, page_number=1):
+    with fitz.open(pdf_path) as doc:
+        page = doc[page_number - 1]
+        return (round(page.rect.width), round(page.rect.height))
+
+
+def extract_text_with_coordinates(pdf_path, word):
+    with fitz.open(pdf_path) as doc:
+        all_text_data = []
+        for page_num, page in enumerate(doc):
+            text_instances = page.search_for(word)
+            for inst in text_instances:
+                all_text_data.append({"page": page_num + 1, "text": word, "bbox": inst})
+    return all_text_data
+
+
+def get_word_positions(pdf_path, word):
+    text_data = extract_text_with_coordinates(pdf_path, word)
+    for item in text_data:
+        print(f"Page {item['page']}: Text: '{item['text']}', BBox: {item['bbox']}")
+    return text_data[0]["bbox"] if text_data else None
+
+
+def resize_image(input_path, output_path, size):
+    with Image.open(input_path) as img:
+        img_resized = img.resize(size)
+        img_resized.save(output_path, quality=95)
+
+
+def add_image_and_text_to_pdf_page(
+    pdf_path, image_path, page_number, sign_position, output_path
+):
+    page_size = get_pdf_page_size(pdf_path, page_number + 1)
+
+    packet = io.BytesIO()
+    can = canvas.Canvas(packet, pagesize=page_size)
+
+    if sign_position:
+        x0, y0, _, _ = sign_position
+        x0 += 30
+        y0 = page_size[1] - y0  # Adjust for ReportLab's coordinate system
+    else:
+        x0, y0 = 100, 100  # Default position if sign_position is None
+
+    can.drawImage(image_path, x0, y0 - 15, width=25, height=15)
+
+    today = datetime.today().date().strftime(r"%Y%m%d")
+    can.setFont("Helvetica", 10)
+    can.drawString(x0 + 30, y0 - 10, today)
+
+    can.save()
+    packet.seek(0)
+
+    # Merge with original PDF using PyMuPDF
+    pdf_document = fitz.open(pdf_path)
+    new_page = pdf_document[page_number]
+    new_pdf = fitz.open("pdf", packet.getvalue())
+    new_page.show_pdf_page(new_page.rect, new_pdf, 0)
+    pdf_document.save(output_path)
+    pdf_document.close()
+
+
+def add_svg_to_pdf(input_pdf, svg_file, output_pdf, page_number, x, y, width, height):
+    drawing = svg2rlg(svg_file)
+
+    page_size = get_pdf_page_size(input_pdf, page_number + 1)
+
+    # Calculate scaling factors
+    scale_x = width / drawing.width
+    scale_y = height / drawing.height
+
+    packet = io.BytesIO()
+    can = canvas.Canvas(packet, pagesize=page_size)
+
+    # Apply scaling and positioning
+    can.saveState()
+    can.translate(x, page_size[1] - y - height)
+    can.scale(scale_x, scale_y)
+
+    renderPDF.draw(drawing, can, 0, 0)
+
+    can.restoreState()
+    can.save()
+    packet.seek(0)
+
+    # Merge with original PDF using PyMuPDF
+    pdf_document = fitz.open(input_pdf)
+    new_page = pdf_document[page_number]
+    new_pdf = fitz.open("pdf", packet.getvalue())
+    new_page.show_pdf_page(new_page.rect, new_pdf, 0)
+    pdf_document.save(output_pdf)
+    pdf_document.close()
+
+    print(
+        f"Added {svg_file} to {output_pdf} at position ({x}, {y}) with size ({width}, {height})"
+    )
 
 
 class Tuzhi(object):
@@ -58,119 +163,6 @@ class Tuzhi(object):
         return self._category
 
 
-def get_pdf_page_size(pdf_path, page_number=1):
-    try:
-        # 打开PDF文件
-        pdf_document = fitz.open(pdf_path)
-
-        # 获取指定页面
-        page = pdf_document[page_number - 1]  # 页面索引从0开始，所以要减1
-
-        # 获取页面大小
-        page_size = round(page.rect.height), round(page.rect.width)
-
-        return page_size
-
-    except Exception as e:
-        print(f"Error: {e}")
-        return None
-
-
-def extract_text_with_coordinates(pdf_path, word):
-    # 打开 PDF 文件
-    document = fitz.open(pdf_path)
-
-    all_text_data = []
-
-    # 遍历每一页
-    for page_num in range(len(document)):
-        # 获取页面对象
-        page = document.load_page(page_num)
-
-        # 获取页面上的所有文本块及其坐标信息
-        text_dict = page.get_text("dict")
-
-        # 提取文本块及其坐标
-        for block in text_dict["blocks"]:
-            if block["type"] == 0:  # 0 表示文本块
-                for line in block["lines"]:
-                    for span in line["spans"]:
-                        text = span["text"]
-                        bbox = span["bbox"]  # (x0, y0, x1, y1) 表示文本块的边界框
-                        all_text_data.append(
-                            {
-                                "page": page_num + 1,  # 页码从 1 开始
-                                "text": text,
-                                "bbox": bbox,
-                            }
-                        )
-
-    # 关闭文档
-    document.close()
-
-    out = [item for item in all_text_data if item["text"] == word]
-    return out
-
-
-def get_word_positions(pdf_path, word):
-
-    text_data = extract_text_with_coordinates(pdf_path, word)
-
-    for item in text_data:
-        print(f"Page {item['page']}: Text: '{item['text']}', BBox: {item['bbox']}")
-
-    return text_data[0]["bbox"]
-
-
-def resize_image(input_path, output_path, size):
-    with Image.open(input_path) as img:
-        img_resized = img.resize(size)
-        img_resized.save(output_path, quality=95)
-
-    # cairosvg.svg2png(
-    #     url=input_path,
-    #     write_to=output_path,
-    #     output_height=size(1),
-    #     output_width=size(2),
-    # )
-
-
-def add_image_and_text_to_pdf_page(
-    pdf_path, image_path, page_number, sign_position, output_path
-):
-    # 打开现有的 PDF 文件
-    pdf_document = fitz.open(pdf_path)
-
-    # 打开指定的页面（page_number 从 0 开始）
-    page = pdf_document.load_page(page_number)
-
-    # # 定义图片的位置和尺寸 (x0, y0, x1, y1)
-    # x0 = 100  # 图片的左上角 x 坐标
-    # y0 = 500  # 图片的左上角 y 坐标
-    # x1 = x0 + 400  # 图片的右下角 x 坐标 (宽度为 400)
-    # y1 = y0 + 300  # 图片的右下角 y 坐标 (高度为 300)
-    x0 = sign_position[0] + 30
-    y0 = sign_position[1]
-    # x1 = sign_position[2]
-    # y1 = sign_position[3]
-    x1 = x0 + 25
-    y1 = y0 + 15
-
-    # 在页面上添加图片
-    page.insert_image(fitz.Rect(x0, y0, x1, y1), filename=image_path)
-
-    today = datetime.today().date()
-    today = today.strftime(r"%Y%m%d")
-
-    # font_path = "hyswlongfangsong.ttf"
-
-    page.insert_text((x0 + 30, y0 + 10), today, fontsize=10, fontname="helv")
-
-    # 保存修改后的 PDF 文件
-    pdf_document.save(output_path)
-    pdf_document.close()
-
-
 if __name__ == "__main__":
     file1_path = "a2.pdf"
     file1_h, file1_w = get_pdf_page_size(file1_path)
@@ -181,9 +173,10 @@ if __name__ == "__main__":
     print(tuzhi1.size)
 
     tuzhi1_sign_position = get_word_positions(tuzhi1.path, "设计")
-    resize_image("sign_demo.png", "sign_demo_resized.png", (50, 30))
+    resize_image("sign_demo_3.png", "sign_demo_resized.png", (50, 30))
 
-    # resize_image("sign_svg.svg", "sign_demo_resized.png", (50, 30))
     add_image_and_text_to_pdf_page(
         tuzhi1.path, r"sign_demo_resized.png", 0, tuzhi1_sign_position, "a2_sign.pdf"
     )
+
+    add_svg_to_pdf(tuzhi1.path, "sign_svg.svg", "a2_sign.pdf", 0, 500, 300, 350, 230)
